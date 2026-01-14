@@ -1,11 +1,10 @@
-// NOIR RADIO — WebAudio sequencer
+
 "use strict";
 
 const $ = (s, r=document) => r.querySelector(s);
 const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
 const clamp = (n,a,b) => Math.min(b, Math.max(a,n));
 
-/* ---------- audio engine ---------- */
 let audio = null;
 
 function createAudio(){
@@ -67,7 +66,6 @@ function playSnare(t){
   n.start(t);
   n.stop(t + 0.18);
 
-  // little tone
   const o = ctx.createOscillator();
   const og = ctx.createGain();
   o.type = "triangle";
@@ -136,8 +134,6 @@ function playPadSound(pad){
   else if(kind === "bass") playSynth(t, pad.freq, "square");
   else playSynth(t, pad.freq || 220, pad.wave || "sawtooth");
 }
-
-/* ---------- data ---------- */
 const PADS = [
   { id:"K1", name:"Kick", kind:"kick", hint:"sub hit" },
   { id:"S1", name:"Snare", kind:"snare", hint:"noise snap" },
@@ -181,7 +177,6 @@ let playing = false;
 let stepIndex = 0;
 let timer = null;
 
-/* ---------- UI render ---------- */
 renderPads();
 renderSeq();
 bindUI();
@@ -201,7 +196,6 @@ function renderPads(){
     const p = PADS.find(x => x.id === b.dataset.id);
     if(!p) return;
 
-    // shift + click: lock pad to a track by type
     if(e.shiftKey){
       const track = inferTrack(p);
       if(track){
@@ -239,7 +233,6 @@ function paintLocks(){
 function defaultSeq(){
   const s = {};
   TRACKS.forEach(t => s[t.key] = Array(STEPS).fill(false));
-  // simple pattern
   [0,4,8,12].forEach(i => s.kick[i] = true);
   [4,12].forEach(i => s.snare[i] = true);
   [2,6,10,14].forEach(i => s.hat[i] = true);
@@ -270,7 +263,6 @@ function renderSeq(){
   }));
 }
 
-/* ---------- transport ---------- */
 function bindUI(){
   const bpm = $("#bpm");
   const bpmVal = $("#bpmVal");
@@ -286,7 +278,6 @@ function bindUI(){
   $("#startBtn").addEventListener("click", async () => {
     if(!audio){
       audio = createAudio();
-      // ensure resumed (required by browsers)
       await audio.ctx.resume();
       audio.master.gain.value = Number(master.value)/100;
       $("#status").textContent = "Audio: ON";
@@ -320,7 +311,6 @@ function bindUI(){
     flashStatus("Panic");
   });
 
-  // presets (locked pads + seq)
   $("#presetA").addEventListener("click", () => applyPreset("neon"));
   $("#presetB").addEventListener("click", () => applyPreset("noir"));
   $("#presetC").addEventListener("click", () => applyPreset("drone"));
@@ -389,7 +379,7 @@ function stop(){
 
 function schedule(){
   const bpm = Number($("#bpm").value);
-  const stepMs = (60_000 / bpm) / 4; // 16th notes
+  const stepMs = (60_000 / bpm) / 4; 
   clearInterval(timer);
   timer = setInterval(tick, stepMs);
 }
@@ -398,17 +388,15 @@ function tick(){
   if(!playing || !audio) return;
   const t = audio.ctx.currentTime;
 
-  // playhead UI
+
   setPlayhead(stepIndex);
 
-  // trigger tracks
   if(seq.kick[stepIndex]) playPadSound(lockedPad.kick);
   if(seq.snare[stepIndex]) playPadSound(lockedPad.snare);
   if(seq.hat[stepIndex]) playPadSound(lockedPad.hat);
   if(seq.synth[stepIndex]) playPadSound(lockedPad.synth);
 
   stepIndex = (stepIndex + 1) % STEPS;
-  // BPM changes live
   schedule();
 }
 
@@ -423,7 +411,6 @@ function setPlayhead(i){
   });
 }
 
-/* ---------- presets ---------- */
 function applyPreset(name){
   if(name === "neon"){
     lockedPad.kick = PADS.find(p=>p.id==="K1");
@@ -442,7 +429,7 @@ function applyPreset(name){
     seq.hat = seq.hat.map((v,i)=> i%2===0 ? v : false);
     $("#bpm").value = "112";
     $("#bpmVal").textContent = "112";
-  } else { // drone
+  } else { 
     lockedPad.kick = PADS.find(p=>p.id==="K1");
     lockedPad.snare = PADS.find(p=>p.id==="S1");
     lockedPad.hat = PADS.find(p=>p.id==="H1");
@@ -462,7 +449,6 @@ function applyPreset(name){
   flashStatus(`Preset: ${name}`);
 }
 
-/* ---------- persistence ---------- */
 function save(key, value){
   localStorage.setItem(key, JSON.stringify(value));
 }
@@ -477,7 +463,6 @@ function load(key, fallback){
   }
 }
 
-/* ---------- status ---------- */
 let stTimer = null;
 function flashStatus(text){
   const el = $("#status");
@@ -488,7 +473,6 @@ function flashStatus(text){
   }, 1800);
 }
 
-/* ---------- visualizer ---------- */
 function initViz(){
   const c = $("#viz");
   const ctx = c.getContext("2d");
@@ -507,7 +491,6 @@ function initViz(){
   function draw(t){
     ctx.clearRect(0,0,W,H);
 
-    // background glow
     const g = ctx.createRadialGradient(W*0.35, H*0.25, 0, W*0.5, H*0.45, Math.max(W,H)*0.8);
     g.addColorStop(0, "rgba(255,46,214,.14)");
     g.addColorStop(0.45, "rgba(40,247,255,.10)");
@@ -515,7 +498,6 @@ function initViz(){
     ctx.fillStyle = g;
     ctx.fillRect(0,0,W,H);
 
-    // if audio -> spectrum
     if(audio){
       const an = audio.analyser;
       const arr = new Uint8Array(an.frequencyBinCount);
@@ -530,7 +512,7 @@ function initViz(){
         const x = (i/(bars-1)) * W;
         const h = v * (H*0.35);
         ctx.lineWidth = Math.max(1, 2*dpr);
-        // neon-ish line, no fixed palette in code terms; still set to something readable:
+
         ctx.strokeStyle = `rgba(${Math.floor(40+215*v)}, ${Math.floor(120+80*v)}, ${Math.floor(220)}, ${0.22+0.30*v})`;
         ctx.beginPath();
         ctx.moveTo(x, baseY);
@@ -538,7 +520,6 @@ function initViz(){
         ctx.stroke();
       }
 
-      // waveform
       const w = new Uint8Array(an.fftSize);
       an.getByteTimeDomainData(w);
       ctx.strokeStyle = "rgba(182,255,60,.18)";
